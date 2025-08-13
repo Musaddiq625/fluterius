@@ -9,6 +9,8 @@ class GameObject {
   GameObjectType type;
   Offset velocity;
   double angle;
+  bool isDying;
+  double dyingTimeLeft;
 
   GameObject({
     required this.position,
@@ -18,6 +20,8 @@ class GameObject {
     required this.type,
     this.velocity = Offset.zero,
     this.angle = 0,
+    this.isDying = false,
+    this.dyingTimeLeft = 0.0,
   });
 
   GameObject copyWith({
@@ -28,6 +32,8 @@ class GameObject {
     GameObjectType? type,
     Offset? velocity,
     double? angle,
+    bool? isDying,
+    double? dyingTimeLeft,
   }) {
     return GameObject(
       position: position ?? this.position,
@@ -37,6 +43,8 @@ class GameObject {
       type: type ?? this.type,
       velocity: velocity ?? this.velocity,
       angle: angle ?? this.angle,
+      isDying: isDying ?? this.isDying,
+      dyingTimeLeft: dyingTimeLeft ?? this.dyingTimeLeft,
     );
   }
 }

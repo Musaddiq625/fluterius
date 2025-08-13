@@ -10,6 +10,7 @@ import 'package:fluterius/src/dialogs/game_over_dialog.dart';
 import 'package:fluterius/src/dialogs/game_start_dialog.dart';
 import 'package:fluterius/src/enums/game_object_type.dart';
 import 'package:fluterius/src/models/game_object.dart';
+import 'package:fluterius/src/models/particle.dart';
 
 class FluteriusGameWidget extends StatefulWidget {
   const FluteriusGameWidget({super.key});
@@ -24,6 +25,7 @@ class FluteriusGameState extends State<FluteriusGameWidget>
   GameObject? _player;
   final List<GameObject> _enemies = [];
   final List<GameObject> _bullets = [];
+  final List<Particle> _particles = [];
 
   final double _cameraZ = -200;
   final double _focalLength = 100;
@@ -38,11 +40,18 @@ class FluteriusGameState extends State<FluteriusGameWidget>
   final _maxLives = 3;
   late int _lives = _maxLives;
   int _score = 0;
-  final _maxTime = 50;
+  final _maxTime = 60;
   late int _remainingTime = _maxTime;
   late Timer _remainingTimeTimer;
 
   final bgPlayer = AudioPlayer();
+
+  // Explosion particle size controls
+  final double explosionParticleBaseSize =
+      32.0; // Adjust this for overall explosion size
+  final double explosionParticleSizeDepthFactor =
+      1.0; // How much size increases when close
+  final double maxExplosionZ = 2500.0; // Use same as enemy spawn depth
 
   String _getFormattedTime() {
     final minutes = _remainingTime ~/ 60;
@@ -188,6 +197,15 @@ class FluteriusGameState extends State<FluteriusGameWidget>
     });
   }
 
+  Future<void> _explodeSound() async {
+    final player = AudioPlayer();
+    await player.setAsset(AssetConstants.explode);
+    player.play();
+    Future.delayed(Duration(milliseconds: 500)).then((_) {
+      player.dispose();
+    });
+  }
+
   Future<void> _gotHitSound() async {
     final player = AudioPlayer();
     await player.setAsset(AssetConstants.gotHit);
@@ -287,6 +305,42 @@ class FluteriusGameState extends State<FluteriusGameWidget>
               (bullet.baseRadius + enemy.baseRadius) / _playAreaRadius;
           if (angleDifference < angularThreshold &&
               dz < (bullet.baseRadius + enemy.baseRadius)) {
+            // Spawn particles at enemy position
+            final int numParticles = 18;
+            final double baseSpeed = 350;
+            // Explosion size depends on distance (z): closer = bigger
+            final double explosionSizeFactor =
+                1 +
+                explosionParticleSizeDepthFactor *
+                    (1 - (enemy.z / maxExplosionZ)).clamp(0.0, 1.0);
+            for (int i = 0; i < numParticles; i++) {
+              final double theta =
+                  (2 * pi * i) / numParticles +
+                  (Random().nextDouble() - 0.5) * 0.2;
+              final double speed =
+                  baseSpeed * (0.7 + Random().nextDouble() * 0.6);
+              final Offset velocity = Offset(cos(theta), sin(theta)) * speed;
+              final double vz = 80 * (Random().nextDouble() - 0.5);
+              final Color color =
+                  Color.lerp(Colors.yellow, Colors.red, Random().nextDouble())!;
+              final double size =
+                  explosionParticleBaseSize *
+                  explosionSizeFactor *
+                  (0.1 + Random().nextDouble() * 0.4);
+              _particles.add(
+                Particle(
+                  position: enemy.position,
+                  z: enemy.z,
+                  velocity: velocity,
+                  vz: vz,
+                  color: color,
+                  timeLeft: 0.5,
+                  totalDuration: 0.5,
+                  size: size,
+                ),
+              );
+              _explodeSound();
+            }
             enemiesToRemove.add(enemy);
             bulletsToRemove.add(bullet);
             _score++;
@@ -296,12 +350,24 @@ class FluteriusGameState extends State<FluteriusGameWidget>
       }
     }
 
+    // Update and remove particles
+    final particlesToRemove = <Particle>[];
+    for (var particle in _particles) {
+      particle.position += particle.velocity * dt;
+      particle.z += particle.vz * dt;
+      particle.timeLeft -= dt;
+      if (particle.timeLeft <= 0) {
+        particlesToRemove.add(particle);
+      }
+    }
+    _particles.removeWhere((p) => particlesToRemove.contains(p));
     _enemies.removeWhere((e) => enemiesToRemove.contains(e));
     _bullets.removeWhere((b) => bulletsToRemove.contains(b));
 
     // Remove off-screen objects
     // Enemies that passed the player (z < cameraZ or some threshold)
     _enemies.removeWhere((enemy) {
+      if (enemy.isDying) return false; // Don't remove dying enemies here
       if (enemy.z < 0) {
         double fadeProgress = (-enemy.z) / 150;
         enemy.color = enemy.color.withValues(
@@ -329,6 +395,7 @@ class FluteriusGameState extends State<FluteriusGameWidget>
     _animationController.repeat();
     _enemies.clear();
     _bullets.clear();
+    _particles.clear(); // Clear particles on reset
     _remainingTimeTimer.cancel;
     _initTimer();
     _lives = _maxLives;
@@ -404,6 +471,7 @@ class FluteriusGameState extends State<FluteriusGameWidget>
                     player: _player,
                     enemies: _enemies,
                     bullets: _bullets,
+                    particles: _particles, // Pass particles to painter
                     project: _project,
                     cameraZ: _cameraZ,
                     focalLength: _focalLength,
@@ -426,6 +494,7 @@ class _FluteriusPainter extends CustomPainter {
   GameObject? player;
   final List<GameObject> enemies;
   final List<GameObject> bullets;
+  final List<Particle> particles; // Add particles to painter
   final Offset Function(Offset worldPos, double z) project;
   final double cameraZ;
   final double focalLength;
@@ -437,6 +506,7 @@ class _FluteriusPainter extends CustomPainter {
     required this.player,
     required this.enemies,
     required this.bullets,
+    required this.particles, // Add particles to constructor
     required this.project,
     required this.cameraZ,
     required this.focalLength,
@@ -604,10 +674,26 @@ class _FluteriusPainter extends CustomPainter {
     allObjects.addAll(bullets);
     allObjects.sort((a, b) => b.z.compareTo(a.z));
 
+    // Draw particles (scattering explosion effect)
+    for (final particle in particles) {
+      final screenPos = project(particle.position, particle.z);
+      final double progress =
+          1.0 - (particle.timeLeft / particle.totalDuration).clamp(0.0, 1.0);
+      final double worldSize =
+          particle.size * (1.0 - progress * 0.1); // shrink a bit
+      final double effectiveZ = focalLength + particle.z - cameraZ;
+      if (effectiveZ <= 0) continue;
+      final double screenSize = worldSize * (focalLength / effectiveZ);
+      final double alpha = (1.0 - progress).clamp(0.0, 1.0);
+      final paint = Paint()..color = particle.color.withOpacity(alpha);
+      if (screenPos.dx > 0 && screenPos.dy > 0 && screenSize > 0) {
+        canvas.drawCircle(screenPos, screenSize, paint);
+      }
+    }
+
     for (final obj in allObjects) {
       final screenPos = project(obj.position, obj.z);
       if (screenPos.dx < 0 && screenPos.dy < 0) continue;
-
       if (obj.type == GameObjectType.player) {
         PlayerPainter(
           player: obj,
