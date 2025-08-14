@@ -1,38 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="An arcade game inspired by the Operius game from the Opera GX Browser">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="fluterius">
+  <meta name="apple-mobile-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Fluterius">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>fluterius</title>
+  <title>Fluterius</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: black;
+    }
+
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: black;
+      z-index: 9999;
+    }
+
+    #loader img {
+      height: 300px;
+    }
+
+    html, body {
+      min-width: 850px;   /* your minimum width */
+      overflow-x: auto;   /* show horizontal scrollbar when narrower */
+    }
+
+  </style>
 </head>
 <body>
+  <!-- Loader screen -->
+  <div id="loader">
+    <img src="assets/loading-text.gif" alt="Loading..." />
+  </div>
+
+  <!-- Flutter will render the canvas -->
+  <script>
+    const flutterLoader = window.flutterWebRenderer ?? 'auto';
+    window.addEventListener('load', function () {
+      // Wait until Flutter attaches itself
+      const appDiv = document.getElementById('flutter');
+      if (!appDiv) {
+        const observer = new MutationObserver((mutations, obs) => {
+          const flutterCanvas = document.querySelector('flt-glass-pane') || document.querySelector('flutter-view');
+          if (flutterCanvas) {
+            document.getElementById('loader')?.remove();
+            obs.disconnect();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else {
+        document.getElementById('loader')?.remove();
+      }
+    });
+  </script>
+
+  <!-- Bootstrap Flutter -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

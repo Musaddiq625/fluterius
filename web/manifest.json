@@ -1,11 +1,11 @@
 {
-    "name": "fluterius",
+    "name": "Fluterius",
     "short_name": "fluterius",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "An arcade game inspired by the Operius game from the Opera GX Browser",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
