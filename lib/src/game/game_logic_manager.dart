@@ -9,7 +9,7 @@ class GameLogicManager {
   final double _playAreaRadius = 1500;
   final Offset _playAreaCenter = Offset.zero;
   final int _maxLives = 3;
-  final int _maxTime = 5;
+  final int _maxTime = 60;
 
   final double explosionParticleBaseSize = 32.0;
   final double explosionParticleSizeDepthFactor = 1.0;
