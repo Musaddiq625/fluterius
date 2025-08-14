@@ -1,4 +1,4 @@
-package com.example.fluterius
+package com.musaddiq625.fluterius
 
 import io.flutter.embedding.android.FlutterActivity
 
