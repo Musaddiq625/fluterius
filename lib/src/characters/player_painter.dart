@@ -20,7 +20,6 @@ class PlayerPainter extends CustomPainter {
     if (projectedPlayer.dx < 0 || projectedPlayer.dy < 0) return;
 
     final playerPaint = Paint()..color = player.color;
-    // Corrected radius calculation
     final effectiveZ = focalLength + player.z - cameraZ;
     if (effectiveZ <= 0) return;
     final playerRadius = player.baseRadius * (focalLength / effectiveZ);

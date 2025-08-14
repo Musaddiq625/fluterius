@@ -20,7 +20,6 @@ class EnemyPainter extends CustomPainter {
     if (projectedEnemy.dx < 0 || projectedEnemy.dy < 0) return;
 
     final enemyPaint = Paint()..color = enemy.color;
-    // Corrected radius calculation
     final effectiveZ = focalLength + enemy.z - cameraZ;
     if (effectiveZ <= 0) return;
     final enemyRadius = enemy.baseRadius * (focalLength / effectiveZ);
